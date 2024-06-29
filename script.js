@@ -1,58 +1,68 @@
+const cityInput = document.querySelector(".city-input");
+const searchButton = document.querySelector(".search-btn");
+const weatherCardsDiv = document.querySelector(".weathr-card");
 
-const weekDays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const API_KEY = "98c52c9d2c1a150cedc2eb19af3cbfd0";
 
-const apiKey = 'dcb2c73085msh1841d54247678bcp125986jsn7d3e7e0d8413';
-let city = "london";
 
-const url = `https://weatherbit-v1-mashape.p.rapidapi.com/forecast/3hourly?city=${city}&units=imperial&lang=en`;
-const options = {
-    method: 'GET',
-    headers: {
-        'x-rapidapi-key': apiKey,
-        'x-rapidapi-host': 'weatherbit-v1-mashape.p.rapidapi.com'
-    }
+const createWeatherCard = (weatherItem) => {
+  return `
+    <li class="card">
+      <h3>${weatherItem.dt_txt.split(" ")[0]}</h3> 
+      <img src="https://openweathermap.org/img/wn/${weatherItem.weather[0].icon}@2x.png" alt="weather-icon" height="80px">
+      <h4>Temp : ${(weatherItem.main.temp - 273.15).toFixed(2)}°C</h4>
+      <h4>Wind: ${weatherItem.wind.speed} M/S</h4>
+      <h4>Humidity : ${weatherItem.main.humidity}%</h4>
+    </li>`;
 };
 
-async function fetchData() {
-    try {
-        const response = await fetch(url, options);
-        const result = await response.json();
+const getWeatherDetails = (cityName, lat, lon) => {
+  const WEATHER_API_URL = `https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&appid=${API_KEY}`;
 
-        const weatherData = result.data;
-
-        const dailyWeather = {};
-
-        weekDays.forEach(day => {
-            dailyWeather[day] = {
-                dayTemperature: [],
-                nightTemperature: []
-            };
-        });
-
-        weatherData.forEach(data => {
-            const date = new Date(data.timestamp_local);
-            const dayOfWeek = weekDays[date.getDay()];
-
-            if (date.getHours() >= 6 && date.getHours() < 18) {
-                dailyWeather[dayOfWeek].dayTemperature.push({
-                    timestamp: data.timestamp_local,
-                    temperature: data.temp,
-                    weatherDescription: data.weather.description
-                });
-            } else {
-                dailyWeather[dayOfWeek].nightTemperature.push({
-                    timestamp: data.timestamp_local,
-                    temperature: data.temp,
-                    weatherDescription: data.weather.description
-                });
-            }
-        });
-        console.log(JSON.stringify(dailyWeather, null, 2));
-
-    } catch (error) {
-        console.error(error);
+  fetch(WEATHER_API_URL).then(res => {
+    if (!res.ok) {
+      throw new Error('Network response was not ok ' + res.statusText);
     }
-    console.log("msg")
-}
+    return res.json();
+  }).then(data => {
+    const uniqueForecastDays = [];
+    const fiveDaysForecast = data.list.filter(forecast => {
+      const forecastDate = new Date(forecast.dt_txt).getDate();
+      if (!uniqueForecastDays.includes(forecastDate)) {
+        uniqueForecastDays.push(forecastDate);
+        return true;
+      }
+      return false;
+    });
 
-fetchData();
+    console.log(fiveDaysForecast);
+
+    weatherCardsDiv.innerHTML = '';
+    fiveDaysForecast.forEach(weatherItem => {
+      weatherCardsDiv.insertAdjacentHTML("beforeend", createWeatherCard(weatherItem));
+    });
+  }).catch(error => {
+    alert("An error occurred while fetching the weather data: " + error.message);
+  });
+};
+
+const getCoordinates = () => {
+  const cityName = cityInput.value.trim();
+  if (!cityName) return;
+  const GEOCODING_API_URL = `https://api.openweathermap.org/geo/1.0/direct?q=${cityName}&limit=1&appid=${API_KEY}`;
+
+  fetch(GEOCODING_API_URL).then(res => {
+    if (!res.ok) {
+      throw new Error('Network response was not ok ' + res.statusText);
+    }
+    return res.json();
+  }).then(data => {
+    if (!data.length) return alert(`No coordinates found for ${cityName}`);
+    const { name, lat, lon } = data[0];
+    getWeatherDetails(name, lat, lon);
+  }).catch(error => {
+    alert("An error occurred while fetching the coordinates: " + error.message);
+  });
+};
+
+searchButton.addEventListener("click", getCoordinates);
