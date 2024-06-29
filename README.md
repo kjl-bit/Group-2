@@ -1,4 +1,5 @@
 # Group-2
+# Lead by:-Neharika Lakra.
 # Weather App
 This Weather App allows users to search for current weather conditions and a 5-day forecast for any city. Built with HTML, CSS, and JavaScript, the app leverages the OpenWeatherMap API to fetch and display weather data dynamically.
 
